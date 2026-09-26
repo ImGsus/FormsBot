@@ -760,9 +760,15 @@ def main():
     except:
         all_participants = []
 
+    unused_participants = [p for p in all_participants if not p.get('used')]
+
     try:
         for index, profile in enumerate(plan, start=1):
-            participant = all_participants[(index - 1) % len(all_participants)] if all_participants else None
+            if not unused_participants:
+                print("No more unused participants available! Stopping early to avoid duplicates.")
+                break
+                
+            participant = unused_participants[(index - 1) % len(unused_participants)]
             stars = profile
             for attempt in range(1, MAX_RETRIES + 1):
                 ok, reason, driver = submit_once(FORM_LINK, stars, participant, driver)
@@ -772,8 +778,16 @@ def main():
                     continue
                 if ok:
                     submitted += 1
+                    participant['used'] = True
+                    # Remove from unused list for subsequent iterations
+                    unused_participants.remove(participant)
+                    # Save back to file
+                    with open('participants.json', 'w', encoding='utf-8') as f:
+                        import json
+                        json.dump(all_participants, f, indent=2)
+                        
                     print(f'[{index}/{TOTAL_RESPONDENTS}] OK  '
-                          f'profile={profile} ({stars} stars)')
+                          f'profile={profile} ({stars} stars) -> Marked {participant.get("email")} as used')
                     break
                 print(f'[{index}/{TOTAL_RESPONDENTS}] attempt '
                       f'{attempt}/{MAX_RETRIES} failed: {reason}')
