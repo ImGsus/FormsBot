@@ -87,7 +87,7 @@ CHROMEDRIVER_PATH = (
 
 # Star rating given to EVERY rating question, per profile.
 # Must sum to 100 -> an exact split across TOTAL_RESPONDENTS.
-RATING_PROFILE_MIX = {'perfect': 50, 'fine': 50}   # 50% rate 5 stars, 50% rate 4
+RATING_PROFILE_MIX = {5: 60, 4: 30, 3: 10}  # 60% 5-stars, 30% 4-stars, 10% 3-stars (baseline)
 
 PAGE_LOAD_PAUSE = 1.2
 VERIFY_TIMEOUT = 15
@@ -358,10 +358,10 @@ def classify(question):
 
     textareas = question.find_elements(By.CSS_SELECTOR, 'textarea')
     inputs = question.find_elements(By.CSS_SELECTOR, 'input[type="text"]')
-            if textareas or inputs:
-            if 'gmail' in low or 'email' in low:
-                return 'email', title
-            if 'name' in low or 'participant' in low:
+    if textareas or inputs:
+        if 'gmail' in low or 'email' in low:
+            return 'email', title
+        if 'name' in low or 'participant' in low:
             return 'name', title
         if 'feature' in low or 'missing' in low:
             return 'feature', title
@@ -443,10 +443,14 @@ def answer_page(driver, stars, participant, dry_run=False):
     for question in get_questions(driver):
         kind, title = classify(question)
 
-        if kind == 'rating':
-            count = set_rating(question, stars, driver)
+                if kind == 'rating':
+            # Dynamic rating: mostly the baseline, but occasionally varies by 1 star
+            import random
+            wobble = random.choice([0, 0, 0, 0, -1, 1])
+            dynamic_stars = max(1, min(5, stars + wobble))
+            count = set_rating(question, dynamic_stars, driver)
             answered += count
-            log.append(f'      [rating] "{clean(title)}" -> {stars} '
+            log.append(f'      [rating] "{clean(title)}" -> {dynamic_stars} '
                        f'({count} set)')
                 elif kind == 'name':
             value = participant['name'] if participant else random_name()
@@ -759,7 +763,7 @@ def main():
     try:
         for index, profile in enumerate(plan, start=1):
             participant = all_participants[(index - 1) % len(all_participants)] if all_participants else None
-            stars = RATING_PROFILE_MIX[profile]
+            stars = profile
             for attempt in range(1, MAX_RETRIES + 1):
                 ok, reason, driver = submit_once(FORM_LINK, stars, participant, driver)
                 if driver is None:
