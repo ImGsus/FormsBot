@@ -443,7 +443,7 @@ def answer_page(driver, stars, participant, dry_run=False):
     for question in get_questions(driver):
         kind, title = classify(question)
 
-                if kind == 'rating':
+        if kind == 'rating':
             # Dynamic rating: mostly the baseline, but occasionally varies by 1 star
             import random
             wobble = random.choice([0, 0, 0, 0, -1, 1])
@@ -452,7 +452,7 @@ def answer_page(driver, stars, participant, dry_run=False):
             answered += count
             log.append(f'      [rating] "{clean(title)}" -> {dynamic_stars} '
                        f'({count} set)')
-                elif kind == 'name':
+        elif kind == 'name':
             value = participant['name'] if participant else random_name()
             if type_into(question, value, driver):
                 answered += 1
@@ -754,7 +754,7 @@ def main():
     submitted = 0
     failures = {}
 
-        try:
+    try:
         with open('participants.json', 'r', encoding='utf-8') as f:
             all_participants = json.load(f)
     except:
