@@ -32,6 +32,7 @@ RUN
 
 import random
 import re
+import json
 import sys
 import time
 
@@ -49,7 +50,7 @@ from selenium.webdriver.common.by import By
 # Config
 # =========================================
 
-TOTAL_RESPONDENTS = 3          # <-- start at 3, then raise to 100
+TOTAL_RESPONDENTS = 100
 MAX_RETRIES = 2
 MAX_PAGES = 40                 # safety stop; your form has 13
 
@@ -79,9 +80,9 @@ SUBMIT_TEXTS = (
     'submit', 'isumite', 'sendsa', 'senden', 'enviar', 'envoyer',
     'invia', 'vidare', '送信', '提交',
 )
-BRAVE_PATH = r'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe'
+BRAVE_PATH = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 CHROMEDRIVER_PATH = (
-    r'C:\Users\Gman\OneDrive\Documents\Gilbert\chromedriver-win64\chromedriver.exe'
+    r'D:\User\Downloads\Code VS\Survery-Auto-Answer-Program\FormsBot\Files\chromedriver.exe'
 )
 
 # Star rating given to EVERY rating question, per profile.
@@ -357,8 +358,10 @@ def classify(question):
 
     textareas = question.find_elements(By.CSS_SELECTOR, 'textarea')
     inputs = question.find_elements(By.CSS_SELECTOR, 'input[type="text"]')
-    if textareas or inputs:
-        if 'name' in low or 'participant' in low:
+            if textareas or inputs:
+            if 'gmail' in low or 'email' in low:
+                return 'email', title
+            if 'name' in low or 'participant' in low:
             return 'name', title
         if 'feature' in low or 'missing' in low:
             return 'feature', title
@@ -424,7 +427,7 @@ def clean(text, limit=60):
     return flat if len(flat) <= limit else flat[:limit - 1] + '…'
 
 
-def answer_page(driver, stars, dry_run=False):
+def answer_page(driver, stars, participant, dry_run=False):
     """
     Answer every question visible on the current page.
     Returns (answers, log) where log describes what happened per question.
@@ -445,11 +448,16 @@ def answer_page(driver, stars, dry_run=False):
             answered += count
             log.append(f'      [rating] "{clean(title)}" -> {stars} '
                        f'({count} set)')
-        elif kind == 'name':
-            value = random_name()
+                elif kind == 'name':
+            value = participant['name'] if participant else random_name()
             if type_into(question, value, driver):
                 answered += 1
             log.append(f'      [name]   "{clean(title)}" -> "{value}"')
+        elif kind == 'email':
+            value = participant['email'] if participant else "default@gmail.com"
+            if type_into(question, value, driver):
+                answered += 1
+            log.append(f'      [email]  "{clean(title)}" -> "{value}"')
         elif kind == 'suggestion':
             value = random_suggestion()
             if type_into(question, value, driver):
@@ -615,7 +623,7 @@ def submit_and_verify(driver):
 # The page walker
 # =========================================
 
-def walk_form(driver, stars, dry_run=False):
+def walk_form(driver, stars, participant, dry_run=False):
     """
     Walk page by page: answer what is on the page, then click Next.
     On the last page there is no Next, so it clicks Submit and verifies.
@@ -630,7 +638,7 @@ def walk_form(driver, stars, dry_run=False):
         current, total = page_position(driver)
         label = f'Page {current or page_index + 1} of {total or "?"}'
 
-        answered, log = answer_page(driver, stars, dry_run=dry_run)
+        answered, log = answer_page(driver, stars, participant, dry_run=dry_run)
         if dry_run:
             print(f'\n  -- {label}   [{answered} answers]')
             for line in log:
@@ -675,7 +683,7 @@ def walk_form(driver, stars, dry_run=False):
     return False, f'stopped after MAX_PAGES ({MAX_PAGES})', MAX_PAGES
 
 
-def submit_once(link, stars, driver, dry_run=False):
+def submit_once(link, stars, participant, driver, dry_run=False):
     """One complete respondent, using the caller's browser session."""
     try:
         try:
@@ -689,7 +697,7 @@ def submit_once(link, stars, driver, dry_run=False):
         if blocker:
             return False, blocker, driver
 
-        ok, reason, _pages = walk_form(driver, stars, dry_run)
+        ok, reason, _pages = walk_form(driver, stars, participant, dry_run)
         return ok, reason, driver
 
     except TimeoutException as exc:
@@ -742,11 +750,18 @@ def main():
     submitted = 0
     failures = {}
 
+        try:
+        with open('participants.json', 'r', encoding='utf-8') as f:
+            all_participants = json.load(f)
+    except:
+        all_participants = []
+
     try:
         for index, profile in enumerate(plan, start=1):
+            participant = all_participants[(index - 1) % len(all_participants)] if all_participants else None
             stars = RATING_PROFILE_MIX[profile]
             for attempt in range(1, MAX_RETRIES + 1):
-                ok, reason, driver = submit_once(FORM_LINK, stars, driver)
+                ok, reason, driver = submit_once(FORM_LINK, stars, participant, driver)
                 if driver is None:
                     print('  browser died, restarting it')
                     driver = make_driver()
