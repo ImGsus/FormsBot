@@ -768,7 +768,7 @@ def main():
                 print("No more unused participants available! Stopping early to avoid duplicates.")
                 break
                 
-            participant = unused_participants[(index - 1) % len(unused_participants)]
+            participant = unused_participants.pop(0)
             stars = profile
             for attempt in range(1, MAX_RETRIES + 1):
                 ok, reason, driver = submit_once(FORM_LINK, stars, participant, driver)
@@ -779,8 +779,6 @@ def main():
                 if ok:
                     submitted += 1
                     participant['used'] = True
-                    # Remove from unused list for subsequent iterations
-                    unused_participants.remove(participant)
                     # Save back to file
                     with open('participants.json', 'w', encoding='utf-8') as f:
                         json.dump(all_participants, f, indent=2)
