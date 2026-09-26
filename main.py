@@ -761,6 +761,8 @@ def main():
         all_participants = []
 
     unused_participants = [p for p in all_participants if not p.get('used')]
+    import random
+    random.shuffle(unused_participants)
 
     try:
         for index, profile in enumerate(plan, start=1):
