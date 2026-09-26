@@ -729,7 +729,7 @@ def inspect():
             print(f'BLOCKED: {blocker}')
             return 1
 
-        ok, reason, pages = walk_form(driver, 5, dry_run=True)
+        ok, reason, pages = walk_form(driver, 5, None, dry_run=True)
         print('\n' + '-' * 60)
         print(f'Walked {pages} page(s). Final status: {reason}')
         if ok:
@@ -783,7 +783,6 @@ def main():
                     unused_participants.remove(participant)
                     # Save back to file
                     with open('participants.json', 'w', encoding='utf-8') as f:
-                        import json
                         json.dump(all_participants, f, indent=2)
                         
                     print(f'[{index}/{TOTAL_RESPONDENTS}] OK  '
